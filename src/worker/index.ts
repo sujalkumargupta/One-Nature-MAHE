@@ -1,13 +1,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { sign, verify } from "hono/jwt";
-import { v4 as uuidv4 } from "uuid";
+
 import * as jpeg from "jpeg-js";
 import * as bcrypt from "bcryptjs";
 
 type Env = {
   DB: D1Database;
-  R2_BUCKET: R2Bucket;
   TURNSTILE_SECRET_KEY?: string;
   JWT_SECRET?: string;
 };
@@ -170,8 +169,8 @@ app.delete("/api/auth/users/:id", authMiddleware, adminMiddleware, async (c) => 
   return c.json({ success: true });
 });
 
-// Helper to compress and upload image to R2
-async function compressAndUpload(bucket: R2Bucket, base64Data: string): Promise<string | null> {
+// Helper to compress image and return as Base64 string directly
+async function compressAndUpload(base64Data: string): Promise<string | null> {
   if (!base64Data || !base64Data.startsWith("data:image")) {
     return base64Data; // Already a URL or null
   }
@@ -189,40 +188,22 @@ async function compressAndUpload(bucket: R2Bucket, base64Data: string): Promise<
       const compressed = jpeg.encode(rawImageData, 75); // 75% quality
       compressedBuffer = compressed.data.buffer;
     } else {
-      // For other types, just use as is (or we could add more compression logic)
+      // For other types, just use as is
       compressedBuffer = binaryData.buffer;
     }
 
-    const key = `${uuidv4()}.jpg`;
-    await bucket.put(key, compressedBuffer, {
-      httpMetadata: { contentType: "image/jpeg" },
-    });
+    // Convert back to base64
+    const compressedBinary = new Uint8Array(compressedBuffer);
+    const compressedBase64 = btoa(
+      compressedBinary.reduce((data, byte) => data + String.fromCharCode(byte), "")
+    );
 
-    return `/api/images/${key}`;
+    return `data:image/jpeg;base64,${compressedBase64}`;
   } catch (err) {
-    console.error("Compression/Upload failed:", err);
-    return base64Data; // Fallback to storing base64 if it fails
+    console.error("Compression failed:", err);
+    return base64Data; // Fallback to original base64 if compression fails
   }
 }
-
-// Serve images from R2
-app.get("/api/images/:key", async (c) => {
-  const key = c.req.param("key");
-  const object = await c.env.R2_BUCKET.get(key);
-
-  if (!object) {
-    return c.notFound();
-  }
-
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set("etag", object.httpEtag);
-
-  return c.body(object.body, 200, {
-    "Content-Type": headers.get("content-type") || "image/jpeg",
-    "Cache-Control": "public, max-age=31536000",
-  });
-});
 
 // Update user password - Admin only
 app.patch("/api/auth/users/:id/password", authMiddleware, adminMiddleware, async (c) => {
@@ -311,8 +292,8 @@ app.post("/api/animals", authMiddleware, async (c) => {
   const db = c.env.DB;
   const body = await c.req.json();
 
-  // Compress and move image to R2
-  const photoUrl = await compressAndUpload(c.env.R2_BUCKET, body.photo_url);
+  // Compress image to store as Base64 format in DB directly
+  const photoUrl = await compressAndUpload(body.photo_url);
 
   const result = await db.prepare(`
     INSERT INTO animals (
@@ -361,8 +342,8 @@ app.put("/api/animals/:id", authMiddleware, moderatorMiddleware, async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
 
-  // Compress and move image to R2 if it's a new base64 upload
-  const photoUrl = await compressAndUpload(c.env.R2_BUCKET, body.photo_url);
+  // Compress image to store as Base64 format in DB directly
+  const photoUrl = await compressAndUpload(body.photo_url);
 
   await db.prepare(`
     UPDATE animals SET

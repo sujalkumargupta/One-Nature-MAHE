@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "019c47b3-8c68-7500-821d-24c75a1d5010",
+	"name": "onenaturemahe",
 	"main": "./src/worker/index.ts",
 	"compatibility_date": "2025-06-17",
 	"compatibility_flags": [
@@ -17,19 +17,7 @@
 		{
 			"binding": "DB",
 			"database_name": "019c47b3-8c68-7500-821d-24c75a1d5010",
-			"database_id": "019c47b3-8c68-7500-821d-24c75a1d5010"
-		},
-		{
-			"binding": "_019c47b3_8c68_7500_821d_24c75a1d5010",
-			"database_name": "019c47b3-8c68-7500-821d-24c75a1d5010",
-			"database_id": "27e69794-5feb-4407-b283-dcf752a574bf",
-			"remote": true
-		}
-	],
-	"r2_buckets": [
-		{
-			"binding": "R2_BUCKET",
-			"bucket_name": "019c47b3-8c68-7500-821d-24c75a1d5010"
+			"database_id": "27e69794-5feb-4407-b283-dcf752a574bf"
 		}
 	],
 	"services": [
