@@ -20,16 +20,6 @@
 			"database_id": "27e69794-5feb-4407-b283-dcf752a574bf"
 		}
 	],
-	"services": [
-		{
-			"binding": "EMAILS",
-			"service": "emails-service",
-			"entrypoint": "EmailService",
-			"props": {
-				"appId": "019c47b3-8c68-7500-821d-24c75a1d5010"
-			}
-		}
-	],
 	"vars": {
 		"TURNSTILE_SECRET_KEY": "1x0000000000000000000000000000000AA"
 	}
